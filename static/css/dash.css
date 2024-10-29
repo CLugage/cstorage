@@ -1,0 +1,186 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    background-color: #f4f6f8;
+    color: #333;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: #fff;
+    border-bottom: 1px solid #ddd;
+}
+
+.header-left h1 {
+    font-size: 1.5rem;
+    color: #0073e6;
+}
+
+.user-menu {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.container {
+    display: flex;
+    height: calc(100vh - 60px); /* Adjust height */
+}
+
+.sidebar {
+    width: 200px;
+    background-color: #fff;
+    padding: 1rem;
+    border-right: 1px solid #ddd;
+}
+
+.sidebar ul {
+    list-style: none;
+}
+
+.sidebar ul li {
+    margin: 1rem 0;
+}
+
+.sidebar ul li a {
+    text-decoration: none;
+    color: #333;
+}
+
+.main-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+section {
+    margin-bottom: 2rem;
+    background: #fff;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.storage-overview h2, .file-list h2, .activity-log h2 {
+    font-size: 1.25rem;
+    color: #0073e6;
+    margin-bottom: 1rem;
+}
+
+.storage-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.upload-btn, .upgrade-btn {
+    background-color: #0073e6;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 1rem;
+}
+
+.upload-btn:hover, .upgrade-btn:hover {
+    background-color: #005bb5;
+}
+
+.file-list table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.file-list th, .file-list td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+button {
+    padding: 0.5rem;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    background-color: #333;
+    border-radius: 4px;
+}
+
+button:hover {
+    background-color: #555;
+}
+
+.activity-log ul {
+    list-style: none;
+}
+
+.activity-log li {
+    margin: 0.5rem 0;
+    border-bottom: 1px solid #ddd;
+    padding: 0.5rem 0;
+}
+
+canvas {
+    max-width: 400px; /* Control the size of the chart */
+    height: 200px;    /* Control the height */
+    margin: 0 auto;   /* Center the chart */
+    display: block;    /* Ensure the canvas displays as a block to remove inline spacing */
+}
+
+.logout-btn {
+    display: inline-block; /* Allows setting width and padding */
+    background-color: #e74c3c; /* Button background color */
+    color: white; /* Text color */
+    padding: 0.5rem 1rem; /* Padding for button */
+    border: none; /* Remove default border */
+    border-radius: 4px; /* Rounded corners */
+    text-decoration: none; /* Remove underline */
+    cursor: pointer; /* Cursor change on hover */
+    text-align: center; /* Center text */
+    transition: background-color 0.3s; /* Smooth background color transition */
+}
+
+.logout-btn:hover {
+    background-color: #c0392b; /* Darker color on hover */
+}
+
+.file-preview {
+    display: none; /* Initially hidden */
+}
+button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+button:hover {
+    background-color: #218838;
+}
+.close-btn {
+    background-color: #dc3545; /* Red for close */
+    margin-bottom: 10px;
+}
+.close-btn:hover {
+    background-color: #c82333;
+}
+textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}

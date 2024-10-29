@@ -1,0 +1,29 @@
+<!-- dashboard.html -->
+
+<div class="container mx-auto p-6">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <h2 class="text-2xl font-bold mb-4">Your Current Plan: <span class="text-blue-500">{{ current_user.storage_plan.name }}</span></h2>
+    <p class="text-lg mb-2">Your Storage Limit: <span class="font-semibold">{{ current_user.storage_limit }} GB</span></p>
+    <p class="text-lg mb-6">Your Balance: <span class="font-semibold">${{ current_user.balance }}</span></p>
+
+    <h3 class="text-xl font-semibold mb-4">Available Plans</h3>
+    <ul class="space-y-4">
+        {% for plan in plans %}
+        <li class="flex justify-between items-center p-4 border rounded-lg shadow hover:shadow-lg transition duration-300 ease-in-out hover:bg-gray-100">
+            <div>
+                <h4 class="text-lg font-bold">{{ plan.name }}</h4>
+                <p class="text-gray-600">Price: ${{ plan.price }} - Storage Limit: {{ plan.storage_limit }} GB</p>
+            </div>
+            <form action="{{ url_for('upgrade_plan', plan_id=plan.id) }}" method="post">
+                <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 transition duration-200 transform hover:scale-105">
+                    Upgrade
+                </button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <a href="{{ url_for('dashboard') }}" class="block mt-3 text-blue-600 hover:underline font-semibold hover:text-blue-800 transition duration-200">
+        Back to Dashboard
+    </a>
+</div>

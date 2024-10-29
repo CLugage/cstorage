@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Cloud Storage</title>
+    <link rel="stylesheet" href="../static/css/dash.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgb(0,0,0); /* Fallback color */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more or less, depending on screen size */
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        textarea {
+            width: 100%;
+            height: 300px; /* Set a fixed height for the textarea */
+            font-family: monospace;
+            font-size: 14px;
+            resize: none; /* Disable resizing */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <h1>Dashboard</h1>
+        </div>
+        <div class="header-right">
+            <div class="user-menu">
+                <span>Welcome, {{ current_user.username }}</span>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <nav class="sidebar">
+            <ul>
+                <li><a href="/dashboard">Files</a></li>
+                <li><a href="#">Shared</a></li>
+                <li><a href="/plans">Plans</a></li>
+                <li><a href="/settings">Settings</a></li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <section class="storage-overview">
+                <h2>Storage Overview</h2>
+                <canvas id="storageChart"></canvas>
+                <div class="storage-details">
+                    <p>Total Storage: <span id="total-storage">0 GB</span></p>
+                    <p>Used: <span id="used-storage">0 GB</span></p>
+                    <p>Remaining: <span id="remaining-storage">0 GB</span></p>
+                    <button class="upgrade-btn" onclick="location.href='/plans'">Upgrade Plan</button>
+                </div>
+            </section>
+
+            <section class="file-list">
+                <h2>Files and Folders</h2>
+                <input type="file" id="fileInput" style="display: none;" multiple />
+                <button class="upload-btn" id="uploadBtn">Upload File(s)</button>
+                <button class="create-folder-btn" id="createFolderBtn" onclick="createFolder()">Create Folder</button>
+
+
+        <!-- Create Folder Modal -->
+        <div id="createFolderModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeCreateFolderModal()">&times;</span>
+                <h2 id="currentFolderTitle">Create a New Folder in Root</h2>
+                <input type="text" id="folderName" placeholder="Enter folder name" />
+                <div class="modal-buttons">
+                    <button onclick="handleCreateFolder()">Create</button>
+                    <button onclick="closeCreateFolderModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+
+                <button class="delete-folder-btn" id="deleteFolderBtn" style="display: none;" onclick="deleteCurrentFolder()">Delete Folder</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Size</th>
+                            <th>Uploaded</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fileList">
+                        <!-- Dynamically populated files and folders will appear here -->
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for editing files -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h2>Edit File</h2>
+            <textarea id="fileContent" placeholder="Edit your file content here..."></textarea>
+            <button id="saveChangesBtn">Save Changes</button>
+        </div>
+    </div>
+
+    <script>
+        let currentPath = ''; // To store the current folder path
+        let currentFileName = ''; // To store the name of the file being edited
+        let storageChart;
+
+        async function fetchStorageUsage() {
+            try {
+                const response = await fetch('/storage_usage');
+                if (response.ok) {
+                    const data = await response.json();
+                    const used = data.used_storage;
+                    const remaining = data.remaining_storage;
+
+                    document.getElementById('used-storage').innerText = `${used} GB`;
+                    document.getElementById('remaining-storage').innerText = `${remaining} GB`;
+                    document.getElementById('total-storage').innerText = `${data.total_storage} GB`;
+
+                    updateChart(used, remaining);
+                } else {
+                    console.error('Error fetching storage usage:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function deleteCurrentFolder() {
+            const confirmDelete = confirm(`Are you sure you want to delete the folder "${currentPath}"? This action cannot be undone.`);
+            if (!confirmDelete) return;
+
+            try {
+                const response = await fetch('/delete_folder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ path: currentPath }) // Send current path
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Error: ${error.error}`);
+                } else {
+                    alert('Folder deleted successfully!');
+                    currentPath = ''; // Reset current path after deletion
+                    await fetchFileList(''); // Refresh file list for root or empty state
+                }
+            } catch (error) {
+                console.error('Unexpected error:', error);
+            }
+        }
+
+
+        function createChart(used, remaining) {
+            storageChart = new Chart(document.getElementById('storageChart').getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: ['Used Storage', 'Remaining Storage'],
+                    datasets: [{
+                        data: [used, remaining],
+                        backgroundColor: ['#FF6384', '#36A2EB'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw} GB`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart(used, remaining) {
+            if (storageChart) {
+                storageChart.data.datasets[0].data = [used, remaining];
+                storageChart.update();
+            } else {
+                createChart(used, remaining);
+            }
+        }
+
+        async function fetchFileList(path = '') {
+            const response = await fetch(`/files?path=${encodeURIComponent(path)}`);
+            const files = await response.json();
+            const fileListElement = document.getElementById('fileList');
+            fileListElement.innerHTML = ''; // Clear current list
+
+            files.forEach(item => {
+                const row = document.createElement('tr');
+                const itemType = item.type === 'folder' ? 'Folder' : 'File'; // Determine type
+                row.innerHTML = `
+                    <td><span class="item-name" onclick="openItem('${item.path}')">${item.name}</span></td>
+                    <td>${itemType}</td>
+                    <td>${item.size ? (item.size / 1024 / 1024).toFixed(2) + ' MB' : ''}</td>
+                    <td>${new Date(item.uploaded).toLocaleString()}</td>
+                    <td>
+                        ${itemType === 'File' ? `
+                            <button onclick="previewFile('${item.name}')">Preview</button>
+                            <button onclick="downloadFile('${item.name}')">Download</button>
+                            <button onclick="deleteFile('${item.name}')">Delete</button>
+                            <button onclick="openEditModal('${item.name}')">Edit</button>
+                        ` : ''}
+                    </td>
+                `;
+                fileListElement.appendChild(row);
+            });
+
+            // Show or hide the delete folder button based on current path
+            document.getElementById('deleteFolderBtn').style.display = currentPath ? 'inline-block' : 'none';
+        }
+
+        function openItem(path) {
+            currentPath = path; // Update current path
+            fetchFileList(currentPath); // Load the contents of the folder
+        }
+
+            // Function to open the Create Folder Modal
+            function openCreateFolderModal() {
+                document.getElementById('createFolderModal').style.display = 'block'; // Show modal
+            }
+
+            // Close create folder modal
+            function closeCreateFolderModal() {
+                document.getElementById('createFolderModal').style.display = 'none'; // Hide modal
+            }
+
+            // Handle the actual creation of the folder
+            function createFolder() {
+            // Check if the modal is already visible
+            if (document.getElementById('createFolderModal').style.display === 'block') {
+                return; // If it's already visible, do nothing
+            }
+            document.getElementById('createFolderModal').style.display = 'block'; // Show modal
+        }
+
+        // Close create folder modal
+        function closeCreateFolderModal() {
+            document.getElementById('createFolderModal').style.display = 'none'; // Hide modal
+        }
+
+        // Handle the actual creation of the folder
+        async function handleCreateFolder() {
+            const folderName = document.getElementById('folderName').value;
+            
+            if (!folderName) {
+                alert('Folder name cannot be empty.');
+                return;
+            }
+
+            // Send the current path along with the folder name
+            const response = await fetch('/create_folder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    folder_name: folderName, 
+                    parent_path: currentPath // Send the current path where the folder should be created
+                })
+            });
+
+            if (response.ok) {
+                alert('Folder created successfully!');
+                closeCreateFolderModal();
+                await fetchFileList(currentPath); // Refresh the file list
+            } else {
+                const errorData = await response.json();
+                alert(`Failed to create folder: ${errorData.error}`);
+            }
+        }
+
+
+
+
+        async function handleFileUpload(e) {
+            const files = e.target.files;
+            if (files.length === 0) return;
+
+            const formData = new FormData();
+            Array.from(files).forEach(file => formData.append('files', file)); // Append each file to form data
+            formData.append('path', currentPath); // Append current path to form data
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Error: ${error.error}`);
+                } else {
+                    alert('Files uploaded successfully!');
+                    await fetchFileList(currentPath); // Refresh file list after upload
+                }
+            } catch (error) {
+                console.error('Error uploading files:', error);
+            }
+        }
+
+        async function deleteFile(fileName) {
+            const confirmDelete = confirm(`Are you sure you want to delete ${fileName}?`);
+            if (!confirmDelete) return;
+
+            try {
+                const response = await fetch('/delete_file', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ file_name: fileName, path: currentPath }) // Send current path
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Error: ${error.error}`);
+                } else {
+                    alert('File deleted successfully!');
+                    await fetchFileList(currentPath); // Refresh file list after deletion
+                }
+            } catch (error) {
+                console.error('Unexpected error:', error);
+            }
+        }
+
+        async function downloadFile(fileName) {
+            const a = document.createElement('a');
+            a.href = `/download_file?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(currentPath)}`; // Create download URL
+            a.download = fileName; // Set the download attribute
+            document.body.appendChild(a); // Append to body
+            a.click(); // Simulate click
+            document.body.removeChild(a); // Clean up
+        }
+
+        function openEditModal(fileName) {
+            currentFileName = fileName; // Store the current file name
+            fetch(`/file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(currentPath)}`) // Fetch file content
+                .then(response => response.text())
+                .then(content => {
+                    document.getElementById('fileContent').value = content; // Set content in textarea
+                    document.getElementById('editModal').style.display = 'block'; // Show modal
+                });
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none'; // Hide modal
+        }
+
+        async function saveFileChanges() {
+            const content = document.getElementById('fileContent').value; // Get content from textarea
+
+            try {
+                const response = await fetch('/edit_file', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ file_name: currentFileName, path: currentPath, content }) // Send updated content
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Error: ${error.error}`);
+                } else {
+                    alert('File updated successfully!');
+                    closeEditModal(); // Close modal
+                    await fetchFileList(currentPath); // Refresh file list after update
+                }
+            } catch (error) {
+                console.error('Unexpected error:', error);
+            }
+        }
+
+        document.getElementById('uploadBtn').addEventListener('click', () => {
+            document.getElementById('fileInput').click(); // Trigger file input click
+        });
+
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload); // Handle file selection
+
+        document.getElementById('saveChangesBtn').addEventListener('click', saveFileChanges); // Save changes to file
+
+        window.onload = async () => {
+            await fetchStorageUsage(); // Fetch storage usage on load
+            await fetchFileList(); // Fetch file list on load
+        };
+    </script>
+</body>
+</html>
